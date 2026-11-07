@@ -572,6 +572,41 @@ func detectImageMimeType(filename string) string {
 }
 
 func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommon.RelayInfo, request dto.OpenAIResponsesRequest) (any, error) {
+	// 与 codex adaptor 对齐：渠道系统提示词（含破甲注入）写入 instructions
+	if info != nil && info.ChannelSetting.SystemPrompt != "" {
+		systemPrompt := info.ChannelSetting.SystemPrompt
+		if len(request.Instructions) == 0 {
+			if b, err := common.Marshal(systemPrompt); err == nil {
+				request.Instructions = b
+			} else {
+				return nil, err
+			}
+		} else if info.ChannelSetting.SystemPromptOverride {
+			var existing string
+			if err := common.Unmarshal(request.Instructions, &existing); err == nil {
+				existing = strings.TrimSpace(existing)
+				if existing == "" {
+					if b, err := common.Marshal(systemPrompt); err == nil {
+						request.Instructions = b
+					} else {
+						return nil, err
+					}
+				} else {
+					if b, err := common.Marshal(systemPrompt + "\n" + existing); err == nil {
+						request.Instructions = b
+					} else {
+						return nil, err
+					}
+				}
+			} else {
+				if b, err := common.Marshal(systemPrompt); err == nil {
+					request.Instructions = b
+				} else {
+					return nil, err
+				}
+			}
+		}
+	}
 	//  转换模型推理力度后缀
 	effort, originModel := reasoning.ParseOpenAIReasoningEffortFromModelSuffix(request.Model)
 	if effort != "" {

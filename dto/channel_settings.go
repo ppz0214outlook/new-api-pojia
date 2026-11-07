@@ -1,12 +1,16 @@
 package dto
 
 type ChannelSettings struct {
-	ForceFormat            bool   `json:"force_format,omitempty"`
-	ThinkingToContent      bool   `json:"thinking_to_content,omitempty"`
-	Proxy                  string `json:"proxy"`
-	PassThroughBodyEnabled bool   `json:"pass_through_body_enabled,omitempty"`
-	SystemPrompt           string `json:"system_prompt,omitempty"`
-	SystemPromptOverride   bool   `json:"system_prompt_override,omitempty"`
+	ForceFormat            bool     `json:"force_format,omitempty"`
+	ThinkingToContent      bool     `json:"thinking_to_content,omitempty"`
+	Proxy                  string   `json:"proxy"`
+	PassThroughBodyEnabled bool     `json:"pass_through_body_enabled,omitempty"`
+	SystemPrompt           string   `json:"system_prompt,omitempty"`
+	SystemPromptOverride   bool     `json:"system_prompt_override,omitempty"`
+	// 破甲注入（ZakoAI profiles）：按上游模型精确匹配注入 jailbreak instruction
+	PojiaEnabled  bool     `json:"pojia_enabled,omitempty"`
+	PojiaProfiles []string `json:"pojia_profiles,omitempty"`
+	PojiaFallback bool     `json:"pojia_fallback,omitempty"`
 }
 
 type VertexKeyType string

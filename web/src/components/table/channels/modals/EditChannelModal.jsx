@@ -195,6 +195,9 @@ const EditChannelModal = (props) => {
     pass_through_body_enabled: false,
     system_prompt: '',
     system_prompt_override: false,
+    pojia_enabled: false,
+    pojia_profiles: [],
+    pojia_fallback: false,
     settings: '',
     // 仅 Vertex: 密钥格式（存入 settings.vertex_key_type）
     vertex_key_type: 'json',
@@ -517,7 +520,11 @@ const EditChannelModal = (props) => {
     proxy: '',
     pass_through_body_enabled: false,
     system_prompt: '',
+    pojia_enabled: false,
+    pojia_profiles: [],
+    pojia_fallback: false,
   });
+  const [pojiaCatalog, setPojiaCatalog] = useState([]);
   const showApiConfigCard = true; // 控制是否显示 API 配置卡片
   const getInitValues = () => ({ ...originInputs });
 
@@ -870,6 +877,11 @@ const EditChannelModal = (props) => {
           data.system_prompt = parsedSettings.system_prompt || '';
           data.system_prompt_override =
             parsedSettings.system_prompt_override || false;
+          data.pojia_enabled = parsedSettings.pojia_enabled || false;
+          data.pojia_profiles = Array.isArray(parsedSettings.pojia_profiles)
+            ? parsedSettings.pojia_profiles
+            : [];
+          data.pojia_fallback = parsedSettings.pojia_fallback || false;
         } catch (error) {
           console.error('解析渠道设置失败:', error);
           data.force_format = false;
@@ -878,6 +890,9 @@ const EditChannelModal = (props) => {
           data.pass_through_body_enabled = false;
           data.system_prompt = '';
           data.system_prompt_override = false;
+          data.pojia_enabled = false;
+          data.pojia_profiles = [];
+          data.pojia_fallback = false;
         }
       } else {
         data.force_format = false;
@@ -886,6 +901,9 @@ const EditChannelModal = (props) => {
         data.pass_through_body_enabled = false;
         data.system_prompt = '';
         data.system_prompt_override = false;
+        data.pojia_enabled = false;
+        data.pojia_profiles = [];
+        data.pojia_fallback = false;
       }
 
       if (data.settings) {
@@ -995,6 +1013,9 @@ const EditChannelModal = (props) => {
         pass_through_body_enabled: data.pass_through_body_enabled,
         system_prompt: data.system_prompt,
         system_prompt_override: data.system_prompt_override || false,
+        pojia_enabled: data.pojia_enabled || false,
+        pojia_profiles: data.pojia_profiles || [],
+        pojia_fallback: data.pojia_fallback || false,
       });
       initialModelsRef.current = (data.models || [])
         .map((model) => (model || '').trim())
@@ -1037,7 +1058,8 @@ const EditChannelModal = (props) => {
         data.pass_through_body_enabled ||
         data.force_format ||
         data.claude_beta_query ||
-        data.system_prompt_override;
+        data.system_prompt_override ||
+        data.pojia_enabled;
       if (hasAdvancedValues) {
         setAdvancedSettingsOpen(true);
       }
@@ -1308,6 +1330,13 @@ const EditChannelModal = (props) => {
   useEffect(() => {
     fetchModels().then();
     fetchGroups().then();
+    API.get('/api/channel/pojia/profiles')
+      .then((res) => {
+        if (res?.data?.success) {
+          setPojiaCatalog(res.data.data || []);
+        }
+      })
+      .catch(() => {});
     if (!isEdit) {
       initialBaseUrlRef.current = '';
       setInputs(originInputs);
@@ -1384,6 +1413,9 @@ const EditChannelModal = (props) => {
       pass_through_body_enabled: false,
       system_prompt: '',
       system_prompt_override: false,
+      pojia_enabled: false,
+      pojia_profiles: [],
+      pojia_fallback: false,
     });
     // 重置密钥模式状态
     setKeyMode('append');
@@ -1754,6 +1786,11 @@ const EditChannelModal = (props) => {
       pass_through_body_enabled: localInputs.pass_through_body_enabled || false,
       system_prompt: localInputs.system_prompt || '',
       system_prompt_override: localInputs.system_prompt_override || false,
+      pojia_enabled: localInputs.pojia_enabled || false,
+      pojia_profiles: Array.isArray(localInputs.pojia_profiles)
+        ? localInputs.pojia_profiles
+        : [],
+      pojia_fallback: localInputs.pojia_fallback || false,
     };
     localInputs.setting = JSON.stringify(channelExtraSettings);
 
@@ -1835,6 +1872,9 @@ const EditChannelModal = (props) => {
     delete localInputs.pass_through_body_enabled;
     delete localInputs.system_prompt;
     delete localInputs.system_prompt_override;
+    delete localInputs.pojia_enabled;
+    delete localInputs.pojia_profiles;
+    delete localInputs.pojia_fallback;
     delete localInputs.is_enterprise_account;
     // 顶层的 vertex_key_type 不应发送给后端
     delete localInputs.vertex_key_type;
@@ -2530,6 +2570,27 @@ const EditChannelModal = (props) => {
 
                   <Form.TextArea field='system_prompt' label={t('系统提示词')} placeholder={t('输入系统提示词，用户的系统提示词将优先于此设置')} onChange={(value) => handleChannelSettingsChange('system_prompt', value)} autosize showClear extraText={t('用户优先：如果用户在请求中指定了系统提示词，将优先使用用户的设置')} />
                   <Form.Switch field='system_prompt_override' label={t('系统提示词拼接')} checkedText={t('开')} uncheckedText={t('关')} onChange={(value) => handleChannelSettingsChange('system_prompt_override', value)} extraText={t('如果用户请求中包含系统提示词，则使用此设置拼接到用户的系统提示词前面')} />
+
+                  <Form.Switch field='pojia_enabled' label={t('破甲注入')} checkedText={t('开')} uncheckedText={t('关')} onChange={(value) => handleChannelSettingsChange('pojia_enabled', value)} extraText={t('开启后按上游模型精确匹配注入破甲 Prompt（ZakoAI profiles），无需再经 ZakoAI 中转')} />
+                  {inputs.pojia_enabled && (
+                    <>
+                      <Form.Select
+                        field='pojia_profiles'
+                        label={t('破甲 Profiles')}
+                        placeholder={t('选择要启用的破甲 Profile')}
+                        multiple
+                        filter
+                        style={{ width: '100%' }}
+                        optionList={pojiaCatalog.map((p) => ({
+                          label: `${p.name}（${(p.models || []).join(', ')}）`,
+                          value: p.id,
+                        }))}
+                        onChange={(value) => handleChannelSettingsChange('pojia_profiles', value)}
+                        extraText={t('按模型精确匹配命中的第一个 Profile 生效；支持多选覆盖多个模型')}
+                      />
+                      <Form.Switch field='pojia_fallback' label={t('默认策略兜底')} checkedText={t('开')} uncheckedText={t('关')} onChange={(value) => handleChannelSettingsChange('pojia_fallback', value)} extraText={t('所有已选 Profile 均未命中模型时，注入内置默认破甲 Prompt')} />
+                    </>
+                  )}
                 </div>
               </div>
             );
