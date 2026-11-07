@@ -6,10 +6,10 @@ package pojia
 
 import (
 	"embed"
-	"encoding/json"
 	"sort"
 	"sync"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 )
 
@@ -65,7 +65,7 @@ func mustReadFile(path string) string {
 
 func loadIndex(path string) []*profileEntry {
 	var entries []*profileEntry
-	if err := json.Unmarshal([]byte(mustReadFile(path)), &entries); err != nil {
+	if err := common.Unmarshal([]byte(mustReadFile(path)), &entries); err != nil {
 		panic("pojia: invalid embedded profile index " + path + ": " + err.Error())
 	}
 	return entries
